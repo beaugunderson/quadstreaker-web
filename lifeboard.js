@@ -9,6 +9,7 @@ var COLORS = {
 };
 
 var map;
+var bounds;
 
 function addGeometries(container, options) {
   if (!container[options.type]) {
@@ -29,7 +30,15 @@ function addGeometries(container, options) {
 
     var geometry = new GeoJSON(container[options.type][key].geoJSON, styles);
 
+    // For each MultiPolygon, get the first path and iterate its points to
+    // extend the bounds of the map
     geometry.forEach(function (g) {
+      var points = g.getPaths().getArray()[0];
+
+      points.forEach(function (point) {
+        bounds.extend(point);
+      });
+
       g.setMap(map);
     });
   });
@@ -37,20 +46,24 @@ function addGeometries(container, options) {
 
 $(function () {
   var mapOptions = {
-    zoom: 12,
-    center: new google.maps.LatLng(47.622364, -122.203674),
+    zoom: 4,
+    center: new google.maps.LatLng(41.85, -87.65),
+    mapTypeControlOptions: {
+      style: google.maps.MapTypeControlStyle.DROPDOWN_MENU
+    },
     mapTypeId: google.maps.MapTypeId.ROADMAP,
     styles: gmapGreyStyle
   };
 
   map = new google.maps.Map(document.getElementById('map'), mapOptions);
+  bounds = new google.maps.LatLngBounds();
 
   var uri = new URI(location.href);
   var query = uri.query(true);
 
   var userId = query.userId || 3428;
 
-  $.getJSON('/quadstreaker/proxy.py?userId=' + userId, function (data) {
+  $.getJSON('proxy.py?userId=' + userId, function (data) {
     data = data.parameters[0];
 
     addGeometries(data, { type: 'Hood', weight: 0.5, strokeOpacity: 0.5,
@@ -61,5 +74,9 @@ $(function () {
 
     addGeometries(data, { type: 'Quad', weight: 0.25 });
     addGeometries(data, { type: 'SuperQuad', weight: 0.5 });
+
+    $('#loading').hide();
+
+    map.fitBounds(bounds);
   });
 });
