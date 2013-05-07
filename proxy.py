@@ -10,10 +10,16 @@ import requests
 
 qs = cgi.parse_qs(os.environ["QUERY_STRING"])
 
-r = requests.get('https://api.quadstreaker.com/mobile/getVisitMap/?userId=%s' %
-        qs["userId"][0], verify=False)
+BASE_URI = "https://api.quadstreaker.com/mobile"
+ACCESS_TOKEN = open('.access_token', 'r').read()
 
-print "Content-Type: %s" % r.headers['Content-Type']
+login_request = requests.get('%s/login/?accessToken=%s' % (BASE_URI,
+    ACCESS_TOKEN), verify=False)
+
+map_request = requests.get('%s/getVisitMap/?userId=%s' % (BASE_URI,
+    qs["userId"][0]), verify=False, cookies=login_request.cookies)
+
+print "Content-Type: %s" % map_request.headers['Content-Type']
 print
 
-print r.text
+print map_request.text
