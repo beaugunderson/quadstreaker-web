@@ -11,6 +11,17 @@ var COLORS = {
 var map;
 var bounds;
 
+function squareFromExtents(extents) {
+  var coordinates = [
+    new google.maps.LatLng(extents[1], extents[0]),
+    new google.maps.LatLng(extents[3], extents[0]),
+    new google.maps.LatLng(extents[3], extents[2]),
+    new google.maps.LatLng(extents[1], extents[2])
+  ];
+
+  return coordinates;
+}
+
 function addGeometries(container, options) {
   if (!container[options.type]) {
     return;
@@ -28,19 +39,41 @@ function addGeometries(container, options) {
       fillOpacity: 0.4
     };
 
-    var geometry = new GeoJSON(container[options.type][key].geoJSON, styles);
+    if (options.type === 'Quad' || options.type === 'SuperQuad') {
+      var polygon = new google.maps.Polygon(styles);
 
-    // For each MultiPolygon, get the first path and iterate its points to
-    // extend the bounds of the map
-    geometry.forEach(function (g) {
-      var points = g.getPaths().getArray()[0];
+      polygon.setPaths(squareFromExtents(container[options.type][key].extent));
+      polygon.setMap(map);
+    } else {
+      if (!container[options.type][key].geoJSON.type) {
+        console.log('geoJSON without type:', options.type, key);
 
-      points.forEach(function (point) {
-        bounds.extend(point);
+        return;
+      }
+
+      var geometry = new GeoJSON(container[options.type][key].geoJSON, styles);
+
+      if (geometry.type === 'Error') {
+        console.log('Error parsing GeoJSON:', options.type, key,
+          geometry.message);
+
+        console.log(container[options.type][key].geoJSON);
+
+        return;
+      }
+
+      // For each MultiPolygon, get the first path and iterate its points to
+      // extend the bounds of the map
+      geometry.forEach(function (g) {
+        var points = g.getPaths().getArray()[0];
+
+        points.forEach(function (point) {
+          bounds.extend(point);
+        });
+
+        g.setMap(map);
       });
-
-      g.setMap(map);
-    });
+    }
   });
 }
 
